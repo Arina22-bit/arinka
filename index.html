@@ -1,147 +1,128 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>BaaS + FirebaseService</title>
-    <style>
-        body { font-family: 'Inter', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .container { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button { background: #007bff; color: white; border: none; padding: 12px; border-radius: 6px; width: 100%; font-weight: 600; cursor: pointer; transition: 0.3s; margin-top: 8px; }
-        button:hover { background: #0056b3; }
-        .post { background: #fff; border: 1px solid #eaeaea; padding: 15px; margin-top: 15px; border-radius: 8px; width: 100%; max-width: 500px; position: relative; }
-        .like-btn { cursor: pointer; border: none; background: #f8f9fa; padding: 5px 12px; border-radius: 20px; font-size: 14px; transition: 0.2s; }
-        .like-btn:hover { background: #e2e6ea; }
-        .time { font-size: 11px; color: #999; float: right; }
-    </style>
+<meta charset="UTF-8">
+<title>BaaS + управление</title>
+<style>
+body { font-family: 'Inter', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+.container { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+button { background: #007bff; color: white; border: none; padding: 12px; border-radius: 6px; width: 100%; font-weight: 600; cursor: pointer; margin-top: 5px; transition: 0.3s; }
+button:hover { background: #0056b3; }
+.post { background: #fff; border: 1px solid #eaeaea; padding: 15px; margin-top: 15px; border-radius: 8px; width: 100%; max-width: 500px; position: relative; }
+.like-btn, .action-btn { cursor: pointer; border: none; background: #f8f9fa; padding: 5px 12px; border-radius: 20px; font-size: 14px; margin-right: 5px; transition: 0.2s; }
+.like-btn:hover, .action-btn:hover { background: #e2e6ea; }
+.time { font-size: 11px; color: #999; float: right; }
+</style>
 </head>
 <body>
 
 <div class="container">
-    <h3>Панель управления данными</h3>
-    <input type="text" id="name" placeholder="Имя профиля">
-    <input type="email" id="email" placeholder="Рабочий Email">
-    <button id="mainBtn">Опубликовать в облако</button>
+<h3>Панель управления данными</h3>
+<input type="text" id="name" placeholder="Имя профиля">
+<input type="email" id="email" placeholder="Рабочий Email">
+<button id="mainBtn">Опубликовать в облако</button>
 
-    <hr>
-
-    <input type="number" id="age" placeholder="Возраст для поиска">
-    <button id="searchBtn">Показать пользователей по возрасту</button>
+<input type="text" id="searchName" placeholder="Поиск по имени">
+<button id="searchBtn">Искать</button>
 </div>
 
 <div id="feed" style="width: 100%; max-width: 500px;"></div>
-<div id="searchResults" style="width: 100%; max-width: 500px; margin-top: 20px;"></div>
 
 <script type="module">
-    // Firebase и Firestore
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-    import { 
-        getFirestore, collection, addDoc, query, orderBy, onSnapshot, 
-        serverTimestamp, updateDoc, doc, increment, where, getDocs 
-    } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { 
+    getFirestore, collection, addDoc, query, orderBy, onSnapshot, 
+    serverTimestamp, updateDoc, doc, increment, getDocs, deleteDoc, where
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyBZBgQ_1ybnwRExd-5NUrRq50p1Q9DCB0Y",
-        authDomain: "arina-po-243.firebaseapp.com",
-        projectId: "arina-po-243",
-        storageBucket: "arina-po-243.firebasestorage.app",
-        messagingSenderId: "99660155983",
-        appId: "1:99660155983:web:2ff92e8e1cfde2b06dee3a",
-        measurementId: "G-KHJVKLKDX2"
-    };
+const firebaseConfig = {
+    apiKey: "AIzaSyBZBgQ_1ybnwRExd-5NUrRq50p1Q9DCB0Y",
+    authDomain: "arina-po-243.firebaseapp.com",
+    projectId: "arina-po-243",
+    storageBucket: "arina-po-243.firebasestorage.app",
+    messagingSenderId: "99660155983",
+    appId: "1:99660155983:web:2ff92e8e1cfde2b06dee3a",
+    measurementId: "G-KHJVKLKDX2"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    window.db = db;
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+window.db = db;
 
-    // --- НОВЫЕ ФУНКЦИИ ---
-    async function addUserToFirestore(user) {
-        try {
-            const docRef = await addDoc(collection(db, "users"), user);
-            console.log("Добавлен пользователь с ID:", docRef.id);
-            return docRef.id;
-        } catch (error) {
-            console.error("Ошибка добавления пользователя:", error);
-        }
-    }
+// Увеличение лайка
+const processLike = async (id) => {
+    const docRef = doc(db, "requests", id);
+    try { await updateDoc(docRef, { likes: increment(1) }); } 
+    catch (e) { console.error(e); }
+};
 
-    async function getUsersByAge(age) {
-        try {
-            const q = query(collection(db, "users"), where("age", "==", age));
-            const snapshot = await getDocs(q);
-            const users = [];
-            snapshot.forEach(doc => users.push({ id: doc.id, ...doc.data() }));
-            return users;
-        } catch (error) {
-            console.error("Ошибка получения пользователей:", error);
-            return [];
-        }
-    }
+// Обновление данных
+const updateRequest = async (id) => {
+    const newName = prompt("Новое имя:");
+    const newEmail = prompt("Новый email:");
+    if (!newName && !newEmail) return;
+    const docRef = doc(db, "requests", id);
+    const fields = {};
+    if (newName) fields.name = newName;
+    if (newEmail) fields.email = newEmail;
+    try { await updateDoc(docRef, fields); } 
+    catch (e) { console.error(e); }
+};
 
-    window.processLike = async (id) => {
-        const docRef = doc(db, "requests", id);
-        try {
-            await updateDoc(docRef, { likes: increment(1) });
-        } catch (e) {
-            console.error("Validation Error:", e.message);
-        }
-    };
+// Удаление запроса
+const deleteRequest = async (id) => {
+    if (!confirm("Удалить эту запись?")) return;
+    try { await deleteDoc(doc(db, "requests", id)); } 
+    catch (e) { console.error(e); }
+};
 
-    // --- ОПУБЛИКОВАТЬ ДАННЫЕ ---
-    document.getElementById('mainBtn').onclick = async () => {
-        const btn = document.getElementById('mainBtn');
-        btn.disabled = true;
-        try {
-            await addDoc(collection(db, "requests"), {
-                name: document.getElementById('name').value,
-                email: document.getElementById('email').value,
-                likes: 0,
-                timestamp: serverTimestamp()
-            });
-            document.getElementById('email').value = "";
-        } catch (e) {
-            alert("Ошибка безопасности: Данные отклонены сервером.");
-        }
-        btn.disabled = false;
-    };
+// Добавление запроса
+document.getElementById('mainBtn').onclick = async () => {
+    const name = document.getElementById('name').value;
+    const email = document.getElementById('email').value;
+    if (!name || !email) { alert("Заполните все поля!"); return; }
+    const btn = document.getElementById('mainBtn'); btn.disabled = true;
+    try {
+        await addDoc(collection(db, "requests"), { name, email, likes: 0, timestamp: serverTimestamp() });
+        document.getElementById('name').value = "";
+        document.getElementById('email').value = "";
+    } catch (e) { alert("Ошибка: " + e.message); }
+    btn.disabled = false;
+};
 
-    // --- LIVE FEED ---
-    const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
-    onSnapshot(q, (snapshot) => {
-        const feed = document.getElementById('feed');
-        feed.innerHTML = "";
-        snapshot.forEach((doc) => {
-            const data = doc.data();
-            feed.innerHTML += `
-                <div class="post">
-                    <span class="time">${data.timestamp?.toDate().toLocaleTimeString() || '...'}</span>
-                    <b>${data.name}</b>
-                    <p style="margin: 5px 0;">${data.email}</p>
-                    <button class="like-btn" onclick="processLike('${doc.id}')">👍 ${data.likes || 0}</button>
-                </div>
-            `;
-        });
+// Подписка на обновления
+const renderFeed = (snapshot) => {
+    const feed = document.getElementById('feed'); feed.innerHTML = "";
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        feed.innerHTML += `
+        <div class="post">
+            <span class="time">${data.timestamp?.toDate().toLocaleTimeString() || '...'}</span>
+            <b>${data.name}</b>
+            <p style="margin: 5px 0;">${data.email}</p>
+            <button class="like-btn" onclick="processLike('${doc.id}')">👍 ${data.likes || 0}</button>
+            <button class="action-btn" onclick="updateRequest('${doc.id}')">✏️ Изменить</button>
+            <button class="action-btn" onclick="deleteRequest('${doc.id}')">🗑️ Удалить</button>
+        </div>`;
     });
+};
 
-    // --- ПОИСК ПОЛЬЗОВАТЕЛЕЙ ПО ВОЗРАСТУ ---
-    document.getElementById('searchBtn').onclick = async () => {
-        const age = parseInt(document.getElementById('age').value);
-        if (!age) return alert("Введите корректный возраст");
+const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
+onSnapshot(q, (snapshot) => renderFeed(snapshot));
 
-        const users = await getUsersByAge(age);
-        const resultsDiv = document.getElementById('searchResults');
-        resultsDiv.innerHTML = "<h4>Результаты поиска:</h4>";
-        if (users.length === 0) resultsDiv.innerHTML += "<p>Пользователи не найдены</p>";
-        users.forEach(user => {
-            resultsDiv.innerHTML += `<div class="post"><b>${user.name}</b>, возраст: ${user.age}</div>`;
-        });
-    };
+// Поиск по имени
+document.getElementById('searchBtn').onclick = async () => {
+    const name = document.getElementById('searchName').value;
+    if (!name) return;
+    const qSearch = query(collection(db, "requests"), where("name", "==", name));
+    const snapshot = await getDocs(qSearch);
+    renderFeed(snapshot);
+};
 
-    // --- ТЕСТ: добавить пользователя через новую функцию ---
-    window.addTestUser = async () => {
-        await addUserToFirestore({ name: "Alex", age: 20 });
-        alert("Пользователь Alex добавлен!");
-    };
+window.processLike = processLike;
+window.updateRequest = updateRequest;
+window.deleteRequest = deleteRequest;
 </script>
 </body>
 </html>

@@ -27,13 +27,11 @@ button#mainBtn:hover { background: #0056b3; }
 
 <div id="feed" style="width: 100%; max-width: 500px;"></div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { 
-    getFirestore, collection, addDoc, query, orderBy, onSnapshot, 
-    serverTimestamp, updateDoc, doc, increment, deleteDoc 
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-
+<!-- Подключаем Firebase через классические скрипты -->
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js"></script>
+<script>
+// Конфиг Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyBZBgQ_1ybnwRExd-5NUrRq50p1Q9DCB0Y",
     authDomain: "arina-po-243.firebaseapp.com",
@@ -44,22 +42,22 @@ const firebaseConfig = {
     measurementId: "G-KHJVKLKDX2"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 // Добавление записи
-document.getElementById('mainBtn').onclick = async () => {
-    const btn = document.getElementById('mainBtn');
+document.getElementById('mainBtn').onclick = async function() {
+    const btn = this;
     const name = document.getElementById('name').value;
     const email = document.getElementById('email').value;
     if (!name || !email) { alert("Заполните все поля!"); return; }
     btn.disabled = true;
     try {
-        await addDoc(collection(db, "requests"), {
+        await db.collection("requests").add({
             name,
             email,
             likes: 0,
-            timestamp: serverTimestamp()
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         document.getElementById('name').value = "";
         document.getElementById('email').value = "";
@@ -68,46 +66,35 @@ document.getElementById('mainBtn').onclick = async () => {
 };
 
 // Увеличение лайка мгновенно
-const processLike = async (id, likesSpan) => {
-    const docRef = doc(db, "requests", id);
-    try {
-        await updateDoc(docRef, { likes: increment(1) });
-        // Мгновенно обновляем счетчик лайков на месте
-        likesSpan.textContent = parseInt(likesSpan.textContent || 0) + 1;
-    } catch (e) { console.error(e); }
-};
+function processLike(id, likesSpan) {
+    const docRef = db.collection("requests").doc(id);
+    docRef.update({ likes: firebase.firestore.FieldValue.increment(1) });
+    likesSpan.textContent = parseInt(likesSpan.textContent || 0) + 1;
+}
 
 // Редактирование записи мгновенно
-const updateRequest = async (id, nameEl, emailEl) => {
+function updateRequest(id, nameEl, emailEl) {
     const newName = prompt("Новое имя:", nameEl.textContent);
     const newEmail = prompt("Новый email:", emailEl.textContent);
     if (!newName && !newEmail) return;
-
-    const docRef = doc(db, "requests", id);
+    const docRef = db.collection("requests").doc(id);
     const fields = {};
     if (newName) fields.name = newName;
     if (newEmail) fields.email = newEmail;
-
-    try { 
-        await updateDoc(docRef, fields);
-        // Мгновенно меняем DOM
-        if (newName) nameEl.textContent = newName;
-        if (newEmail) emailEl.textContent = newEmail;
-    } catch (e) { console.error(e); }
-};
+    docRef.update(fields);
+    if (newName) nameEl.textContent = newName;
+    if (newEmail) emailEl.textContent = newEmail;
+}
 
 // Удаление записи мгновенно
-const deleteRequest = async (id, postDiv) => {
+function deleteRequest(id, postDiv) {
     if (!confirm("Удалить эту запись?")) return;
-    try { 
-        await deleteDoc(doc(db, "requests", id));
-        // Мгновенно убираем с экрана
-        postDiv.remove();
-    } catch (e) { console.error(e); }
-};
+    db.collection("requests").doc(id).delete();
+    postDiv.remove();
+}
 
 // Отображение данных
-const renderFeed = (snapshot) => {
+function renderFeed(snapshot) {
     const feed = document.getElementById('feed');
     feed.innerHTML = "";
     snapshot.forEach(doc => {
@@ -115,7 +102,7 @@ const renderFeed = (snapshot) => {
         const postDiv = document.createElement("div");
         postDiv.className = "post";
         postDiv.innerHTML = `
-            <span class="time">${data.timestamp?.toDate().toLocaleTimeString() || '...'}</span>
+            <span class="time">${data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : '...'}</span>
             <b class="name">${data.name}</b>
             <p class="email" style="margin: 5px 0;">${data.email}</p>
             <div style="display: flex; align-items: center;">
@@ -125,7 +112,6 @@ const renderFeed = (snapshot) => {
                 <button class="action-btn">🗑️ Удалить</button>
             </div>
         `;
-
         const likeBtn = postDiv.querySelector(".like-btn");
         const likesSpan = postDiv.querySelector(".likes-count");
         const nameEl = postDiv.querySelector(".name");
@@ -139,11 +125,10 @@ const renderFeed = (snapshot) => {
 
         feed.appendChild(postDiv);
     });
-};
+}
 
 // Подписка на обновления Firestore
-const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
-onSnapshot(q, renderFeed);
+db.collection("requests").orderBy("timestamp", "desc").onSnapshot(renderFeed);
 </script>
 
 </body>

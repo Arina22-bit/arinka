@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>BaaS + управление</title>
+<title>BaaS + мгновенное обновление</title>
 <style>
 body { font-family: 'Inter', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; align-items: center; padding: 20px; }
 .container { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
@@ -67,31 +67,43 @@ document.getElementById('mainBtn').onclick = async () => {
     btn.disabled = false;
 };
 
-// Увеличение лайка
-const processLike = async (id) => {
+// Увеличение лайка мгновенно
+const processLike = async (id, likesSpan) => {
     const docRef = doc(db, "requests", id);
-    try { await updateDoc(docRef, { likes: increment(1) }); } 
-    catch (e) { console.error(e); }
+    try {
+        await updateDoc(docRef, { likes: increment(1) });
+        // Мгновенно обновляем счетчик лайков на месте
+        likesSpan.textContent = parseInt(likesSpan.textContent || 0) + 1;
+    } catch (e) { console.error(e); }
 };
 
-// Редактирование записи
-const updateRequest = async (id) => {
-    const newName = prompt("Новое имя:");
-    const newEmail = prompt("Новый email:");
+// Редактирование записи мгновенно
+const updateRequest = async (id, nameEl, emailEl) => {
+    const newName = prompt("Новое имя:", nameEl.textContent);
+    const newEmail = prompt("Новый email:", emailEl.textContent);
     if (!newName && !newEmail) return;
+
     const docRef = doc(db, "requests", id);
     const fields = {};
     if (newName) fields.name = newName;
     if (newEmail) fields.email = newEmail;
-    try { await updateDoc(docRef, fields); } 
-    catch (e) { console.error(e); }
+
+    try { 
+        await updateDoc(docRef, fields);
+        // Мгновенно меняем DOM
+        if (newName) nameEl.textContent = newName;
+        if (newEmail) emailEl.textContent = newEmail;
+    } catch (e) { console.error(e); }
 };
 
-// Удаление записи
-const deleteRequest = async (id) => {
+// Удаление записи мгновенно
+const deleteRequest = async (id, postDiv) => {
     if (!confirm("Удалить эту запись?")) return;
-    try { await deleteDoc(doc(db, "requests", id)); } 
-    catch (e) { console.error(e); }
+    try { 
+        await deleteDoc(doc(db, "requests", id));
+        // Мгновенно убираем с экрана
+        postDiv.remove();
+    } catch (e) { console.error(e); }
 };
 
 // Отображение данных
@@ -100,29 +112,38 @@ const renderFeed = (snapshot) => {
     feed.innerHTML = "";
     snapshot.forEach(doc => {
         const data = doc.data();
-        feed.innerHTML += `
-        <div class="post">
+        const postDiv = document.createElement("div");
+        postDiv.className = "post";
+        postDiv.innerHTML = `
             <span class="time">${data.timestamp?.toDate().toLocaleTimeString() || '...'}</span>
-            <b>${data.name}</b>
-            <p style="margin: 5px 0;">${data.email}</p>
+            <b class="name">${data.name}</b>
+            <p class="email" style="margin: 5px 0;">${data.email}</p>
             <div style="display: flex; align-items: center;">
-                <button class="like-btn" onclick="processLike('${doc.id}')">👍</button>
+                <button class="like-btn">👍</button>
                 <span class="likes-count">${data.likes || 0}</span>
-                <button class="action-btn" onclick="updateRequest('${doc.id}')">✏️ Изменить</button>
-                <button class="action-btn" onclick="deleteRequest('${doc.id}')">🗑️ Удалить</button>
+                <button class="action-btn">✏️ Изменить</button>
+                <button class="action-btn">🗑️ Удалить</button>
             </div>
-        </div>`;
+        `;
+
+        const likeBtn = postDiv.querySelector(".like-btn");
+        const likesSpan = postDiv.querySelector(".likes-count");
+        const nameEl = postDiv.querySelector(".name");
+        const emailEl = postDiv.querySelector(".email");
+        const editBtn = postDiv.querySelector(".action-btn:nth-of-type(1)");
+        const deleteBtn = postDiv.querySelector(".action-btn:nth-of-type(2)");
+
+        likeBtn.onclick = () => processLike(doc.id, likesSpan);
+        editBtn.onclick = () => updateRequest(doc.id, nameEl, emailEl);
+        deleteBtn.onclick = () => deleteRequest(doc.id, postDiv);
+
+        feed.appendChild(postDiv);
     });
 };
 
 // Подписка на обновления Firestore
 const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
 onSnapshot(q, renderFeed);
-
-// Делаем функции глобально доступными
-window.processLike = processLike;
-window.updateRequest = updateRequest;
-window.deleteRequest = deleteRequest;
 </script>
 
 </body>

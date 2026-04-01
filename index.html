@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Cloud Registration | Auth & Storage Edition</title>
+    <title>Cloud Registration | Fast Upload Edition</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background: linear-gradient(135deg, #fce4ec, #fff1f1); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; color: #5d4037; }
@@ -14,36 +14,28 @@
             width: 100%; padding: 14px; margin-bottom: 12px; border: 2px solid rgba(255, 182, 193, 0.3); 
             border-radius: 12px; font-size: 14px; background: rgba(255, 255, 255, 0.9); transition: 0.3s; 
         }
-        input:focus { border-color: #f06292; outline: none; }
         
         button#submitBtn, .login-btn { width: 100%; padding: 15px; border: none; border-radius: 12px; background: linear-gradient(45deg, #ff80ab, #f06292); color: white; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button#submitBtn:hover:not(:disabled), .login-btn:hover { transform: scale(1.03); box-shadow: 0 5px 15px rgba(240, 98, 146, 0.4); }
-        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        button:disabled { background: #ccc; cursor: not-allowed; transform: none !important; }
 
         .auth-bar { background: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); width: 100%; max-width: 400px; }
         .user-avatar { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #ec407a; }
         .logout-btn { background: #ff4757; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-size: 12px; margin-left: auto; }
 
-        .search-container { width: 100%; max-width: 450px; margin: 20px 0; }
-        .search-input { width: 100%; padding: 12px 20px; border-radius: 50px; border: 2px solid rgba(255, 182, 193, 0.5); outline: none; }
-        
-        #feed { width: 100%; max-width: 450px; }
-        .post { background: white; padding: 20px; border-radius: 18px; margin-bottom: 18px; box-shadow: 0 5px 15px rgba(255, 182, 193, 0.2); display: flex; align-items: flex-start; gap: 15px; animation: slideIn 0.4s ease; }
-        .avatar { width: 50px; height: 50px; border-radius: 50%; background: #f8bbd0; color: white; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; flex-shrink: 0; object-fit: cover; }
+        #feed { width: 100%; max-width: 450px; margin-top: 20px; }
+        .post { background: white; padding: 20px; border-radius: 18px; margin-bottom: 18px; box-shadow: 0 5px 15px rgba(255, 182, 193, 0.2); display: flex; align-items: flex-start; gap: 15px; }
+        .avatar { width: 50px; height: 50px; border-radius: 50%; background: #f8bbd0; flex-shrink: 0; object-fit: cover; }
         .post-info { flex-grow: 1; overflow: hidden; }
         .post-name { font-weight: bold; color: #ec407a; }
-        .post-comment { margin: 8px 0; font-size: 14px; color: #5d4037; line-height: 1.4; background: #fff9fb; padding: 8px; border-radius: 8px; word-wrap: break-word; }
-        .attached-img { width: 100%; border-radius: 12px; margin-top: 10px; max-height: 300px; object-fit: cover; border: 1px solid #eee; }
-        .like-btn { padding: 6px 12px; border: none; border-radius: 10px; background: linear-gradient(45deg, #7b1fa2, #5c6bc0); color: white; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.3s; margin-top: 10px; }
-        
-        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .post-comment { margin: 8px 0; font-size: 14px; background: #fff9fb; padding: 8px; border-radius: 8px; }
+        .attached-img { width: 100%; border-radius: 12px; margin-top: 10px; max-height: 300px; object-fit: cover; }
+        .like-btn { padding: 6px 12px; border: none; border-radius: 10px; background: linear-gradient(45deg, #7b1fa2, #5c6bc0); color: white; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div id="authSection" style="width: 100%; max-width: 400px; margin-bottom: 20px; text-align: center;">
         <button id="loginBtn" class="login-btn">Войти через Google</button>
-        
         <div id="userInfo" class="auth-bar" style="display: none;">
             <img id="userPhoto" class="user-avatar" src="" alt="Avatar">
             <span id="displayUserName" style="font-weight: bold;"></span>
@@ -54,37 +46,23 @@
     <div class="form-container" id="feedbackContainer" style="display: none;">
         <h2>Оставить отзыв</h2>
         <form id="feedbackForm">
-            <input type="text" id="userName" placeholder="Ваше имя" readonly>
-            <input type="email" id="userEmail" placeholder="Ваш Email" readonly>
+            <input type="text" id="userName" readonly>
+            <input type="email" id="userEmail" readonly>
             <input type="text" id="userComment" placeholder="Ваш комментарий..." required>
-            
-            <label style="display: block; text-align: left; font-size: 12px; margin-bottom: 5px; color: #ec407a;">Прикрепить фото:</label>
+            <label style="display: block; text-align: left; font-size: 11px; margin-bottom: 5px; color: #ec407a;">Выберите фото (будет загружено в облако):</label>
             <input type="file" id="fileInput" accept="image/*">
-            
             <button type="submit" id="submitBtn">Опубликовать</button>
             <p id="message" style="margin-top:10px; font-size:12px; color: #ec407a;"></p>
         </form>
-    </div>
-
-    <div class="search-container">
-        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Найти отзыв по имени...">
     </div>
 
     <div id="feed"></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-        import { 
-            getFirestore, collection, addDoc, query, orderBy, onSnapshot, 
-            serverTimestamp, updateDoc, doc, increment 
-        } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-        import { 
-            getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged 
-        } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-        // Импорт Storage
-        import { 
-            getStorage, ref, uploadBytes, getDownloadURL 
-        } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, increment } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBZBgQ_1ybnwRExd-5NUrRq50p1Q9DCB0Y",
@@ -92,8 +70,7 @@
             projectId: "arina-po-243",
             storageBucket: "arina-po-243.firebasestorage.app",
             messagingSenderId: "99660155983",
-            appId: "1:99660155983:web:2ff92e8e1cfde2b06dee3a",
-            measurementId: "G-KHJVKLKDX2"
+            appId: "1:99660155983:web:2ff92e8e1cfde2b06dee3a"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -102,137 +79,113 @@
         const storage = getStorage(app);
         const provider = new GoogleAuthProvider();
 
-        let currentSearchTerm = "";
-
-        // --- ЛОГИКА АВТОРИЗАЦИИ ---
-        const loginBtn = document.getElementById('loginBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const userInfo = document.getElementById('userInfo');
-        const feedbackContainer = document.getElementById('feedbackContainer');
-
-        loginBtn.onclick = () => signInWithPopup(auth, provider);
-        logoutBtn.onclick = () => signOut(auth);
+        const submitBtn = document.getElementById("submitBtn");
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                loginBtn.style.display = 'none';
-                userInfo.style.display = 'flex';
-                feedbackContainer.style.display = 'block';
-                document.getElementById('displayUserName').innerText = user.displayName;
+                document.getElementById('loginBtn').style.display = 'none';
+                document.getElementById('userInfo').style.display = 'flex';
+                document.getElementById('feedbackContainer').style.display = 'block';
                 document.getElementById('userPhoto').src = user.photoURL;
+                document.getElementById('displayUserName').innerText = user.displayName;
                 document.getElementById('userName').value = user.displayName;
                 document.getElementById('userEmail').value = user.email;
             } else {
-                loginBtn.style.display = 'block';
-                userInfo.style.display = 'none';
-                feedbackContainer.style.display = 'none';
+                document.getElementById('loginBtn').style.display = 'block';
+                document.getElementById('userInfo').style.display = 'none';
+                document.getElementById('feedbackContainer').style.display = 'none';
             }
         });
 
-        // --- ЗАГРУЗКА ДАННЫХ И ФОТО ---
-        async function createNewPost(name, email, comment, file) {
+        document.getElementById('loginBtn').onclick = () => signInWithPopup(auth, provider);
+        document.getElementById('logoutBtn').onclick = () => signOut(auth);
+
+        document.getElementById("feedbackForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const file = document.getElementById("fileInput").files[0];
+            const comment = document.getElementById("userComment").value;
+            
+            submitBtn.disabled = true;
+
+            if (file) {
+                // Если есть файл, используем uploadTask для отслеживания прогресса
+                const fileRef = ref(storage, `posts/${Date.now()}_${file.name}`);
+                const uploadTask = uploadBytesResumable(fileRef, file);
+
+                uploadTask.on('state_changed', 
+                    (snapshot) => {
+                        const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                        submitBtn.innerText = `Загрузка: ${progress}%`;
+                    }, 
+                    (error) => {
+                        console.error(error);
+                        alert("Ошибка загрузки файла!");
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = "Опубликовать";
+                    }, 
+                    async () => {
+                        const url = await getDownloadURL(uploadTask.snapshot.ref);
+                        await saveToFirestore(comment, url);
+                    }
+                );
+            } else {
+                // Если файла нет, просто сохраняем текст
+                submitBtn.innerText = "Публикуем...";
+                await saveToFirestore(comment, null);
+            }
+        });
+
+        async function saveToFirestore(comment, imageUrl) {
             try {
-                let imageUrl = null;
-
-                // Загружаем файл в Storage, если он выбран
-                if (file) {
-                    const fileRef = ref(storage, `uploads/${Date.now()}_${file.name}`);
-                    const uploadResult = await uploadBytes(fileRef, file);
-                    imageUrl = await getDownloadURL(uploadResult.ref);
-                }
-
                 await addDoc(collection(db, "requests"), {
-                    name: name,
-                    email: email,
+                    name: auth.currentUser.displayName,
+                    email: auth.currentUser.email,
                     comment: comment,
                     likes: 0,
                     photo: auth.currentUser.photoURL,
-                    attachedImage: imageUrl, 
+                    attachedImage: imageUrl,
                     timestamp: serverTimestamp()
                 });
-                return true;
+                
+                document.getElementById("userComment").value = "";
+                document.getElementById("fileInput").value = "";
+                document.getElementById("message").innerText = "Опубликовано! ✨";
+                setTimeout(() => document.getElementById("message").innerText = "", 3000);
             } catch (e) {
-                console.error("Ошибка:", e);
-                alert("Ошибка при сохранении. Проверьте настройки Firebase (Rules).");
-                return false;
+                console.error(e);
+                alert("Ошибка БД!");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Опубликовать";
             }
         }
 
-        function loadRequests() {
+        function loadFeed() {
             const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
             onSnapshot(q, (snapshot) => {
                 const feed = document.getElementById("feed");
                 feed.innerHTML = "";
-                
-                snapshot.forEach((docSnap) => {
+                snapshot.forEach(docSnap => {
                     const data = docSnap.data();
-                    if (data.name.toLowerCase().includes(currentSearchTerm.toLowerCase())) {
-                        const avatarHtml = data.photo 
-                            ? `<img src="${data.photo}" class="avatar">` 
-                            : `<div class="avatar">${data.name.substring(0, 2).toUpperCase()}</div>`;
-                        
-                        const attachedImgHtml = data.attachedImage 
-                            ? `<img src="${data.attachedImage}" class="attached-img">` 
-                            : "";
-                        
-                        feed.innerHTML += `
-                            <div class="post">
-                                ${avatarHtml}
-                                <div class="post-info">
-                                    <div style="display:flex; justify-content:space-between">
-                                        <span class="post-name">${data.name}</span>
-                                        <span style="font-size:10px; color:#ccc;">
-                                            ${data.timestamp?.toDate().toLocaleTimeString() || '...'}
-                                        </span>
-                                    </div>
-                                    <div class="post-comment">${data.comment || "Без комментария"}</div>
-                                    ${attachedImgHtml}
-                                    <button class="like-btn" onclick="addLikeToPost('${docSnap.id}')">
-                                        👍 ${data.likes || 0}
-                                    </button>
-                                </div>
-                            </div>`;
-                    }
+                    feed.innerHTML += `
+                        <div class="post">
+                            <img src="${data.photo}" class="avatar">
+                            <div class="post-info">
+                                <span class="post-name">${data.name}</span>
+                                <div class="post-comment">${data.comment}</div>
+                                ${data.attachedImage ? `<img src="${data.attachedImage}" class="attached-img">` : ""}
+                                <button class="like-btn" onclick="addLike('${docSnap.id}')">👍 ${data.likes || 0}</button>
+                            </div>
+                        </div>`;
                 });
             });
         }
 
-        // --- ОБРАБОТЧИКИ СОБЫТИЙ ---
-        document.getElementById("searchInput").addEventListener("input", (e) => {
-            currentSearchTerm = e.target.value;
-            loadRequests();
-        });
-
-        document.getElementById("feedbackForm").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById("submitBtn");
-            const name = document.getElementById("userName").value;
-            const email = document.getElementById("userEmail").value;
-            const comment = document.getElementById("userComment").value;
-            const file = document.getElementById("fileInput").files[0];
-            
-            btn.innerText = "Публикуем...";
-            btn.disabled = true;
-
-            const success = await createNewPost(name, email, comment, file);
-            
-            if (success) {
-                document.getElementById("userComment").value = "";
-                document.getElementById("fileInput").value = "";
-                document.getElementById("message").innerText = "Готово! ✨";
-                setTimeout(() => { document.getElementById("message").innerText = ""; }, 3000);
-            }
-            
-            btn.innerText = "Опубликовать";
-            btn.disabled = false;
-        });
-
-        window.addLikeToPost = async (id) => {
-            const docRef = doc(db, "requests", id);
-            await updateDoc(docRef, { likes: increment(1) });
+        window.addLike = async (id) => {
+            await updateDoc(doc(db, "requests", id), { likes: increment(1) });
         };
 
-        loadRequests();
+        loadFeed();
     </script>
 </body>
 </html>

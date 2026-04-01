@@ -12,16 +12,43 @@
         input:focus { border-color: #f06292; outline: none; }
         button#submitBtn { width: 100%; padding: 15px; border: none; border-radius: 12px; background: linear-gradient(45deg, #ff80ab, #f06292); color: white; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
         button#submitBtn:hover { transform: scale(1.03); box-shadow: 0 5px 15px rgba(240, 98, 146, 0.4); }
+
         .search-container { width: 100%; max-width: 450px; margin: 20px 0; }
         .search-input { width: 100%; padding: 12px 20px; border-radius: 50px; border: 2px solid rgba(255, 182, 193, 0.5); outline: none; }
+
         #feed { width: 100%; max-width: 450px; }
+
         .post { background: white; padding: 20px; border-radius: 18px; margin-bottom: 18px; box-shadow: 0 5px 15px rgba(255, 182, 193, 0.2); display: flex; align-items: flex-start; gap: 15px; animation: slideIn 0.4s ease; }
+
         .avatar { width: 50px; height: 50px; border-radius: 50%; background: #f8bbd0; color: white; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; flex-shrink: 0; }
+
         .post-info { flex-grow: 1; }
         .post-name { font-weight: bold; color: #ec407a; }
+
         .post-comment { margin: 8px 0; font-size: 14px; color: #5d4037; line-height: 1.4; background: #fff9fb; padding: 8px; border-radius: 8px; }
-        .like-btn { padding: 6px 12px; border: none; border-radius: 10px; background: #fff1f1; color: #f06292; cursor: pointer; font-size: 13px; font-weight: bold; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ✅ НОВЫЙ СТИЛЬ ЛАЙКА */
+        .like-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(45deg, #7b1fa2, #5c6bc0);
+            color: white;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .like-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 12px rgba(92, 107, 192, 0.4);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
@@ -50,7 +77,6 @@
             serverTimestamp, updateDoc, doc, increment 
         } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-        // ✅ НОВЫЙ CONFIG
         const firebaseConfig = {
             apiKey: "AIzaSyBZBgQ_1ybnwRExd-5NUrRq50p1Q9DCB0Y",
             authDomain: "arina-po-243.firebaseapp.com",
@@ -104,8 +130,10 @@
                                         </span>
                                     </div>
                                     <div class="post-comment">${data.comment || "Без комментария"}</div>
+                                    
+                                    <!-- ✅ НОВЫЙ СМАЙЛИК -->
                                     <button class="like-btn" onclick="addLikeToPost('${docSnap.id}')">
-                                        💖 ${data.likes || 0}
+                                        👍 ${data.likes || 0}
                                     </button>
                                 </div>
                             </div>`;

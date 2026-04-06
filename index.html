@@ -7,7 +7,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #fff1f5; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; color: #5d4037; }
         
-        /* Дизайн карточек как на твоих скриншотах */
         .card, .form-container { background: white; padding: 30px; border-radius: 30px; width: 100%; max-width: 500px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); text-align: center; }
         
         h2, .dm-title { color: #f06292; font-weight: 300; font-size: 24px; margin-bottom: 20px; text-align: center; }
@@ -20,24 +19,22 @@
         .pink-btn:hover { background: #ec407a; }
         .logout-btn { background: #ff5252; padding: 8px 20px; width: auto; font-size: 14px; border-radius: 10px; }
 
-        /* Список пользователей */
         .users-list { display: flex; gap: 15px; overflow-x: auto; padding: 10px 0; justify-content: center; min-height: 50px; }
         .user-item { cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 5px; }
         .user-item:hover { transform: scale(1.1); }
         .user-item span { font-size: 12px; color: #f06292; }
 
-        /* Окно чата (появляется при выборе) */
         #activeChat { display: none; margin-top: 20px; border-top: 1px solid #fce4ec; padding-top: 20px; }
         .messages-display { height: 200px; overflow-y: auto; background: #fff9fb; border-radius: 15px; padding: 15px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
         .msg { padding: 10px 14px; border-radius: 18px; max-width: 80%; font-size: 13px; text-align: left; }
         .msg.sent { background: #f06292; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
         .msg.received { background: #eee; color: black; align-self: flex-start; border-bottom-left-radius: 4px; }
 
-        /* Лента */
         #feed { width: 100%; max-width: 500px; }
         .post { background: white; padding: 20px; border-radius: 20px; margin-bottom: 15px; display: flex; gap: 15px; text-align: left; }
         .post-comment { background: #fff9fb; padding: 10px; border-radius: 12px; font-size: 14px; margin: 8px 0; }
         .like-btn { border: none; background: #6c5ce7; color: white; padding: 6px 15px; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        .attached-img { width: 100%; border-radius: 15px; margin-top: 10px; display: block; }
     </style>
 </head>
 <body>
@@ -103,7 +100,6 @@
         const auth = getAuth(app);
         const storage = getStorage(app);
         
-        // Исправленный провайдер с выбором аккаунта
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({
             prompt: 'select_account'
@@ -124,7 +120,6 @@
                 document.getElementById('userName').value = user.displayName;
                 document.getElementById('userEmail').value = user.email;
 
-                // Сохраняем данные пользователя для списка контактов
                 await setDoc(doc(db, "users", user.uid), { 
                     uid: user.uid, 
                     displayName: user.displayName, 
@@ -143,7 +138,6 @@
         document.getElementById('loginBtn').onclick = () => signInWithPopup(auth, provider);
         document.getElementById('logoutBtn').onclick = () => signOut(auth);
 
-        // Загрузка списка других пользователей
         function loadUsers(myId) {
             onSnapshot(collection(db, "users"), (snap) => {
                 const list = document.getElementById("usersList");
@@ -153,8 +147,9 @@
                     if (user.uid !== myId) {
                         const item = document.createElement("div");
                         item.className = "user-item";
+                        const photo = user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName)}&background=f8bbd0&color=fff`;
                         item.innerHTML = `
-                            <img src="${user.photoURL}" style="width:45px;height:45px;border-radius:50%;border:2px solid #fce4ec">
+                            <img src="${photo}" style="width:45px;height:45px;border-radius:50%;border:2px solid #fce4ec">
                             <span>${user.displayName.split(' ')[0]}</span>
                         `;
                         item.onclick = () => openChat(user.uid, user.displayName);
@@ -164,17 +159,13 @@
             });
         }
 
-        // Открытие чата
         function openChat(targetId, targetName) {
             selectedUserId = targetId;
             document.getElementById("activeChat").style.display = "block";
             document.getElementById("chatWithTitle").innerText = `Чат с: ${targetName}`;
-            
             if (chatUnsub) chatUnsub();
-            
             const myId = auth.currentUser.uid;
             const chatId = myId < targetId ? `${myId}_${targetId}` : `${targetId}_${myId}`;
-            
             const q = query(collection(db, "chats", chatId, "messages"), orderBy("timestamp", "asc"));
             chatUnsub = onSnapshot(q, (snap) => {
                 const box = document.getElementById("messagesDisplay");
@@ -188,15 +179,12 @@
             });
         }
 
-        // Отправка ЛС
         document.getElementById("sendDmBtn").onclick = async () => {
             const input = document.getElementById("dmInput");
             const val = input.value.trim();
             if (!val || !selectedUserId) return;
-            
             const myId = auth.currentUser.uid;
             const chatId = myId < selectedUserId ? `${myId}_${selectedUserId}` : `${selectedUserId}_${myId}`;
-            
             await addDoc(collection(db, "chats", chatId, "messages"), { 
                 senderId: myId, 
                 text: val, 
@@ -205,7 +193,6 @@
             input.value = "";
         };
 
-        // Лайки (исправлено)
         window.addLikeToPost = async (id) => {
             try {
                 const postRef = doc(db, "requests", id);
@@ -215,19 +202,23 @@
             }
         };
 
-        // Загрузка ленты
+        // Исправленная загрузка ленты (без undefined и с фото)
         onSnapshot(query(collection(db, "requests"), orderBy("timestamp", "desc")), (snap) => {
             const feed = document.getElementById("feed");
             feed.innerHTML = "";
             snap.forEach(docSnap => {
                 const p = docSnap.data();
                 if (p.name.toLowerCase().includes(currentSearchTerm.toLowerCase())) {
+                    const userPhotoUrl = p.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=f8bbd0&color=fff`;
+                    const commentText = p.comment || "Отзыв без комментария";
+                    
                     feed.innerHTML += `
                     <div class="post">
-                        <img src="${p.photo}" class="user-avatar">
+                        <img src="${userPhotoUrl}" class="user-avatar">
                         <div style="flex:1">
                             <span style="color:#ec407a;font-weight:bold;">${p.name}</span>
-                            <div class="post-comment">${p.comment}</div>
+                            <div class="post-comment">${commentText}</div>
+                            ${p.attachedImage ? `<img src="${p.attachedImage}" class="attached-img">` : ""}
                             <button class="like-btn" onclick="addLikeToPost('${docSnap.id}')">👍 ${p.likes || 0}</button>
                         </div>
                     </div>`;
@@ -235,7 +226,7 @@
             });
         });
 
-        // Отправка отзыва
+        // Исправленная отправка отзыва (с сохранением ссылки на картинку)
         document.getElementById("feedbackForm").onsubmit = async (e) => {
             e.preventDefault();
             const file = document.getElementById("fileInput").files[0];
@@ -251,6 +242,7 @@
                 name: auth.currentUser.displayName, 
                 comment: document.getElementById("userComment").value, 
                 photo: auth.currentUser.photoURL, 
+                attachedImage: img, // Добавлено сохранение картинки
                 likes: 0, 
                 timestamp: serverTimestamp() 
             });

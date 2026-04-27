@@ -2,257 +2,105 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Cloud Registration | URL & File Edition</title>
+    <title>Мой статус | Cloud Edition</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        /* Изменен цвет фона здесь */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body { background-color: #f0f7ff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; color: #5d4037; }
         
-        .card, .form-container { background: white; padding: 30px; border-radius: 30px; width: 100%; max-width: 500px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); text-align: center; }
+        .card { background: white; padding: 30px; border-radius: 30px; width: 100%; max-width: 500px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; }
         
-        h2, .dm-title { color: #f06292; font-weight: 300; font-size: 24px; margin-bottom: 20px; text-align: center; }
+        h2 { color: #f06292; font-weight: 300; font-size: 24px; margin-bottom: 20px; }
         
-        .auth-bar { display: flex; align-items: center; justify-content: space-between; padding: 15px 25px; background: white; border-radius: 20px; width: 100%; max-width: 500px; margin-bottom: 20px; }
-        .user-avatar { width: 50px; height: 50px; border-radius: 50%; border: 2px solid #f06292; object-fit: cover; }
+        .buttons-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
         
-        input { width: 100%; padding: 16px; margin-bottom: 12px; border: 1px solid #ffe4ec; border-radius: 15px; font-size: 14px; background: #fff; }
-        .pink-btn { width: 100%; padding: 16px; border: none; border-radius: 15px; background: #f06292; color: white; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .pink-btn:hover { background: #ec407a; }
-        .logout-btn { background: #ff5252; padding: 8px 20px; width: auto; font-size: 14px; border-radius: 10px; }
+        .status-btn { padding: 16px; border: none; border-radius: 15px; color: white; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .status-btn:hover { opacity: 0.8; transform: translateY(-2px); }
 
-        .users-list { display: flex; gap: 15px; overflow-x: auto; padding: 10px 0; justify-content: center; min-height: 50px; }
-        .user-item { cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 5px; }
-        .user-item:hover { transform: scale(1.1); }
-        .user-item span { font-size: 12px; color: #f06292; }
+        /* Твои новые цвета кнопок */
+        .btn-study { background: #28a745; }
+        .btn-coffee { background: #ffc107; color: #333; }
+        .btn-game { background: #17a2b8; }
+        .btn-home { background: #6c757d; }
 
-        #activeChat { display: none; margin-top: 20px; border-top: 1px solid #fce4ec; padding-top: 20px; }
-        .messages-display { height: 200px; overflow-y: auto; background: #fff9fb; border-radius: 15px; padding: 15px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
-        .msg { padding: 10px 14px; border-radius: 18px; max-width: 80%; font-size: 13px; text-align: left; }
-        .msg.sent { background: #f06292; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-        .msg.received { background: #eee; color: black; align-self: flex-start; border-bottom-left-radius: 4px; }
-
-        #feed { width: 100%; max-width: 500px; }
-        .post { background: white; padding: 20px; border-radius: 20px; margin-bottom: 15px; display: flex; gap: 15px; text-align: left; }
-        .post-comment { background: #fff9fb; padding: 10px; border-radius: 12px; font-size: 14px; margin: 8px 0; }
-        .like-btn { border: none; background: #6c5ce7; color: white; padding: 6px 15px; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        .attached-img { width: 100%; border-radius: 15px; margin-top: 10px; display: block; }
+        .user-item { display: flex; align-items: center; padding: 15px; background: #fff9fb; border-radius: 20px; margin-bottom: 10px; text-align: left; }
+        .status-dot { width: 15px; height: 15px; border-radius: 50%; margin-right: 15px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+        
+        #myInfo { color: #ec407a; font-weight: bold; margin-bottom: 15px; font-size: 18px; }
     </style>
 </head>
 <body>
 
-    <div id="authSection" class="auth-bar" style="display: none;">
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <img id="userPhoto" class="user-avatar" src="">
-            <span id="displayUserName" style="font-weight: bold;"></span>
-        </div>
-        <button id="logoutBtn" class="pink-btn logout-btn">Выйти</button>
-    </div>
-    <button id="loginBtn" class="pink-btn" style="max-width: 400px; margin-bottom: 20px;">Войти через Google</button>
-
-    <div class="card" id="dmContainer" style="display: none;">
-        <h3 class="dm-title">Личные сообщения</h3>
-        <p style="color: #f06292; font-size: 14px; margin-bottom: 10px;">Выберите собеседника:</p>
-        <div id="usersList" class="users-list"></div>
-        
-        <div id="activeChat">
-            <h4 id="chatWithTitle" style="font-size: 13px; margin-bottom: 10px; color: #5d4037;"></h4>
-            <div id="messagesDisplay" class="messages-display"></div>
-            <div style="display: flex; gap: 10px;">
-                <input type="text" id="dmInput" placeholder="Ваше сообщение..." style="margin-bottom: 0;">
-                <button id="sendDmBtn" class="pink-btn" style="width: 50px; padding: 0;">></button>
-            </div>
+    <div class="card">
+        <h2>Мой профиль</h2>
+        <div id="myInfo">Загрузка данных...</div>
+        <div class="buttons-grid">
+            <button class="status-btn btn-study" onclick="changeStatus('Учусь', '#28a745')">📚 Учусь</button>
+            <button class="status-btn btn-coffee" onclick="changeStatus('Кофе', '#ffc107')">☕ Кофе</button>
+            <button class="status-btn btn-game" onclick="changeStatus('В игре', '#17a2b8')">🎮 В игре</button>
+            <button class="status-btn btn-home" onclick="changeStatus('Дома', '#6c757d')">🏠 Дома</button>
         </div>
     </div>
 
-    <div class="form-container" id="feedbackContainer" style="display: none;">
-        <h2>Оставить отзыв</h2>
-        <form id="feedbackForm">
-            <input type="text" id="userName" readonly>
-            <input type="email" id="userEmail" readonly>
-            <input type="text" id="userComment" placeholder="Ваш комментарий..." required>
-            <input type="file" id="fileInput" accept="image/*" style="border:none; background:none;">
-            <button type="submit" id="submitBtn" class="pink-btn">Опубликовать</button>
-        </form>
+    <div class="card">
+        <h2>Монитор группы</h2>
+        <div id="groupList">Загрузка списка участников...</div>
     </div>
-
-    <div style="width: 100%; max-width: 500px; margin-bottom: 20px;">
-        <input type="text" id="searchInput" placeholder="🔍 Найти отзыв по имени..." style="border-radius: 50px;">
-    </div>
-    
-    <div id="feed"></div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, increment, setDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-        import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBZBgQ_1ybnwRExd-5NUrRq50p1Q9DCB0Y",
-            authDomain: "arina-po-243.firebaseapp.com",
-            projectId: "arina-po-243",
-            storageBucket: "arina-po-243.firebasestorage.app",
-            messagingSenderId: "99660155983",
-            appId: "1:99660155983:web:2ff92e8e1cfde2b06dee3a"
-        };
+        // ДАННЫЕ ИЗ ТВОИХ СКРИНШОТОВ
+        const URL = 'https://jntyxqszolfppwdrdipe.supabase.co';
+        const KEY = 'sb_publishable_gDUijJdjrjuT-U8x3462qg_Nt1rZ2cD';
+        const supabase = createClient(URL, KEY);
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        const storage = getStorage(app);
-        
-        const provider = new GoogleAuthProvider();
-        provider.setCustomParameters({
-            prompt: 'select_account'
-        });
+        // ТВОЙ ID
+        const MY_ID = 'b7763f35-8511-4368-afb8-e0fe703c550b';
 
-        let currentSearchTerm = "";
-        let selectedUserId = null;
-        let chatUnsub = null;
+        window.changeStatus = async (statusText, colorCode) => {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ 
+                    status: statusText, 
+                    color: colorCode 
+                })
+                .eq('id', MY_ID);
 
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                document.getElementById('loginBtn').style.display = 'none';
-                document.getElementById('authSection').style.display = 'flex';
-                document.getElementById('feedbackContainer').style.display = 'block';
-                document.getElementById('dmContainer').style.display = 'block';
-                document.getElementById('displayUserName').innerText = user.displayName;
-                document.getElementById('userPhoto').src = user.photoURL;
-                document.getElementById('userName').value = user.displayName;
-                document.getElementById('userEmail').value = user.email;
-
-                await setDoc(doc(db, "users", user.uid), { 
-                    uid: user.uid, 
-                    displayName: user.displayName, 
-                    photoURL: user.photoURL 
-                }, { merge: true });
-                
-                loadUsers(user.uid);
+            if (error) {
+                alert("Ошибка! Проверь RLS политики.");
+                console.error(error);
             } else {
-                document.getElementById('loginBtn').style.display = 'block';
-                document.getElementById('authSection').style.display = 'none';
-                document.getElementById('feedbackContainer').style.display = 'none';
-                document.getElementById('dmContainer').style.display = 'none';
+                fetchGroup();
             }
-        });
+        };
 
-        document.getElementById('loginBtn').onclick = () => signInWithPopup(auth, provider);
-        document.getElementById('logoutBtn').onclick = () => signOut(auth);
+        async function fetchGroup() {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .order('username', { ascending: true });
 
-        function loadUsers(myId) {
-            onSnapshot(collection(db, "users"), (snap) => {
-                const list = document.getElementById("usersList");
-                list.innerHTML = "";
-                snap.forEach(uDoc => {
-                    const user = uDoc.data();
-                    if (user.uid !== myId) {
-                        const item = document.createElement("div");
-                        item.className = "user-item";
-                        const photo = user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName)}&background=f8bbd0&color=fff`;
-                        item.innerHTML = `
-                            <img src="${photo}" style="width:45px;height:45px;border-radius:50%;border:2px solid #fce4ec">
-                            <span>${user.displayName.split(' ')[0]}</span>
-                        `;
-                        item.onclick = () => openChat(user.uid, user.displayName);
-                        list.appendChild(item);
-                    }
-                });
-            });
+            if (error) return console.error(error);
+
+            const list = document.getElementById('groupList');
+            list.innerHTML = data.map(user => `
+                <div class="user-item">
+                    <div class="status-dot" style="background: ${user.color || '#ccc'}"></div>
+                    <div>
+                        <strong style="color: #f06292;">${user.username}</strong><br>
+                        <small style="color: #888;">${user.status || 'Статус не задан'}</small>
+                    </div>
+                </div>
+            `).join('');
+
+            const me = data.find(u => u.id === MY_ID);
+            if (me) {
+                document.getElementById('myInfo').innerText = `Привет, ${me.username}!`;
+            }
         }
 
-        function openChat(targetId, targetName) {
-            selectedUserId = targetId;
-            document.getElementById("activeChat").style.display = "block";
-            document.getElementById("chatWithTitle").innerText = `Чат с: ${targetName}`;
-            if (chatUnsub) chatUnsub();
-            const myId = auth.currentUser.uid;
-            const chatId = myId < targetId ? `${myId}_${targetId}` : `${targetId}_${myId}`;
-            const q = query(collection(db, "chats", chatId, "messages"), orderBy("timestamp", "asc"));
-            chatUnsub = onSnapshot(q, (snap) => {
-                const box = document.getElementById("messagesDisplay");
-                box.innerHTML = "";
-                snap.forEach(m => {
-                    const d = m.data();
-                    const side = d.senderId === myId ? "sent" : "received";
-                    box.innerHTML += `<div class="msg ${side}">${d.text}</div>`;
-                });
-                box.scrollTop = box.scrollHeight;
-            });
-        }
-
-        document.getElementById("sendDmBtn").onclick = async () => {
-            const input = document.getElementById("dmInput");
-            const val = input.value.trim();
-            if (!val || !selectedUserId) return;
-            const myId = auth.currentUser.uid;
-            const chatId = myId < selectedUserId ? `${myId}_${selectedUserId}` : `${selectedUserId}_${myId}`;
-            await addDoc(collection(db, "chats", chatId, "messages"), { 
-                senderId: myId, 
-                text: val, 
-                timestamp: serverTimestamp() 
-            });
-            input.value = "";
-        };
-
-        window.addLikeToPost = async (id) => {
-            try {
-                const postRef = doc(db, "requests", id);
-                await updateDoc(postRef, { likes: increment(1) });
-            } catch (e) {
-                console.error("Ошибка при лайке:", e);
-            }
-        };
-
-        onSnapshot(query(collection(db, "requests"), orderBy("timestamp", "desc")), (snap) => {
-            const feed = document.getElementById("feed");
-            feed.innerHTML = "";
-            snap.forEach(docSnap => {
-                const p = docSnap.data();
-                if (p.name.toLowerCase().includes(currentSearchTerm.toLowerCase())) {
-                    const userPhotoUrl = p.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=f8bbd0&color=fff`;
-                    const commentText = p.comment || "Отзыв без комментария";
-                    
-                    feed.innerHTML += `
-                    <div class="post">
-                        <img src="${userPhotoUrl}" class="user-avatar">
-                        <div style="flex:1">
-                            <span style="color:#ec407a;font-weight:bold;">${p.name}</span>
-                            <div class="post-comment">${commentText}</div>
-                            ${p.attachedImage ? `<img src="${p.attachedImage}" class="attached-img">` : ""}
-                            <button class="like-btn" onclick="addLikeToPost('${docSnap.id}')">👍 ${p.likes || 0}</button>
-                        </div>
-                    </div>`;
-                }
-            });
-        });
-
-        document.getElementById("feedbackForm").onsubmit = async (e) => {
-            e.preventDefault();
-            const file = document.getElementById("fileInput").files[0];
-            let img = null;
-            
-            if (file) {
-                const sRef = ref(storage, `posts/${Date.now()}`);
-                await uploadBytesResumable(sRef, file);
-                img = await getDownloadURL(sRef);
-            }
-            
-            await addDoc(collection(db, "requests"), { 
-                name: auth.currentUser.displayName, 
-                comment: document.getElementById("userComment").value, 
-                photo: auth.currentUser.photoURL, 
-                attachedImage: img, 
-                likes: 0, 
-                timestamp: serverTimestamp() 
-            });
-            
-            document.getElementById("feedbackForm").reset();
-            document.getElementById('userName').value = auth.currentUser.displayName;
-        };
-
-        document.getElementById("searchInput").oninput = (e) => {
-            currentSearchTerm = e.target.value;
-        };
+        fetchGroup();
+        setInterval(fetchGroup, 5000);
     </script>
 </body>
 </html>

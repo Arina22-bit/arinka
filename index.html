@@ -11,6 +11,9 @@
         
         h2 { color: #f06292; font-weight: 300; font-size: 24px; margin-bottom: 20px; }
         
+        /* Таймер сессии */
+        .timer-badge { font-size: 32px; font-weight: 700; color: #3b82f6; margin: 15px 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
+
         .buttons-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
         
         .status-btn { padding: 16px; border: none; border-radius: 15px; color: white; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
@@ -27,11 +30,26 @@
         .btn-google:hover { background: #357ae8; }
         .btn-logout { background: none; border: none; color: #888; text-decoration: underline; cursor: pointer; margin-top: 15px; font-size: 14px; }
 
-        .user-item { display: flex; align-items: center; padding: 15px; background: #fff9fb; border-radius: 20px; margin-bottom: 10px; text-align: left; }
-        .status-dot { width: 15px; height: 15px; border-radius: 50%; margin-right: 15px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+        /* Монитор группы */
+        .user-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; background: #fff9fb; border-radius: 20px; margin-bottom: 10px; text-align: left; }
+        .user-info { display: flex; align-items: center; }
+        .status-dot { width: 15px; height: 15px; border-radius: 50%; margin-right: 15px; box-shadow: 0 0 5px rgba(0,0,0,0.1); transition: background 0.3s, box-shadow 0.3s; }
         
+        /* Зеленый индикатор вкладки Online */
+        .status-dot.online { background: #10b981 !important; box-shadow: 0 0 10px #10b981; }
+        
+        .user-meta { text-align: right; font-size: 13px; }
         #myInfo { color: #ec407a; font-weight: bold; margin-bottom: 15px; font-size: 18px; }
         
+        /* Общий чат */
+        .chat-box { background: #fff9fb; border-radius: 20px; height: 180px; overflow-y: auto; padding: 14px; text-align: left; margin-bottom: 12px; border: 1px solid #f3f4f6; font-size: 14px; }
+        .chat-msg { margin-bottom: 8px; line-height: 1.4; }
+        .chat-input-container { display: flex; gap: 8px; }
+        .chat-input { flex: 1; padding: 12px 16px; border: 1px solid #e5e7eb; border-radius: 15px; font-size: 14px; outline: none; background: #fff9fb; }
+        .chat-input:focus { border-color: #f06292; background: white; }
+        .btn-send { background: #f06292; color: white; border: none; border-radius: 15px; width: 45px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: 0.2s; }
+        .btn-send:hover { background: #ec407a; }
+
         /* Класс для скрытия элементов */
         .hidden { display: none !important; }
     </style>
@@ -47,11 +65,16 @@
     <div class="card hidden" id="profileCard">
         <h2>Мой профиль</h2>
         <div id="myInfo">Загрузка данных...</div>
+        
+        <div class="timer-badge">
+            ⏱️ <span id="timerDisplay">00 сек.</span>
+        </div>
+
         <div class="buttons-grid">
-            <button class="status-btn btn-study" onclick="changeStatus('Учусь', '#28a745')">📚 Учусь</button>
-            <button class="status-btn btn-coffee" onclick="changeStatus('Кофе', '#ffc107')">☕ Кофе</button>
-            <button class="status-btn btn-game" onclick="changeStatus('В игре', '#17a2b8')">🎮 В игре</button>
-            <button class="status-btn btn-home" onclick="changeStatus('Дома', '#6c757d')">🏠 Дома</button>
+            <button class="status-btn btn-study" onclick="changeStatus('Учусь 📚', '#28a745', true)">📚 Учусь</button>
+            <button class="status-btn btn-coffee" onclick="changeStatus('Кофе ☕', '#ffc107', false)">☕ Кофе</button>
+            <button class="status-btn btn-game" onclick="changeStatus('В игре 🎮', '#17a2b8', false)">🎮 В игре</button>
+            <button class="status-btn btn-home" onclick="changeStatus('Дома 🏠', '#6c757d', false)">🏠 Дома</button>
         </div>
         <button class="btn-logout" id="logoutBtn">Выйти из аккаунта</button>
     </div>
@@ -61,23 +84,32 @@
         <div id="groupList">Загрузка списка участников...</div>
     </div>
 
+    <div class="card">
+        <h2>Общий чат</h2>
+        <div class="chat-box" id="chatBox"></div>
+        <div class="chat-input-container">
+            <input type="text" class="chat-input" id="chatInput" placeholder="Сообщение...">
+            <button class="btn-send" id="sendMsgBtn">➤</button>
+        </div>
+    </div>
+
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-        // Конфигурация вашего проекта Supabase
         const URL = 'https://jntyxqszolfppwdrdipe.supabase.co';
         const KEY = 'sb_publishable_gDUijJdjrjuT-U8x3462qg_Nt1rZ2cD';
         const supabase = createClient(URL, KEY);
 
-        // Сюда запишется ID пользователя после входа
         let currentUserId = null;
+        let timerInterval = null;
+        let onlineUsers = {};
+        let globalProfiles = [];
 
         // 1. ЛОГИКА КНОПКИ ВХОДА ЧЕРЕЗ GOOGLE
         document.getElementById('loginBtn').addEventListener('click', async () => {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    // Точный адрес вашего сайта на GitHub Pages
                     redirectTo: 'https://arina22-bit.github.io/arinka/' 
                 }
             });
@@ -90,27 +122,69 @@
             window.location.reload();
         });
 
-        // 3. ФУНКЦИЯ ИЗМЕНЕНИЯ СТАТУСА
-        window.changeStatus = async (statusText, colorCode) => {
+        // 3. ФУНКЦИЯ ИЗМЕНЕНИЯ СТАТУСА С ТАЙМЕРОМ
+        window.changeStatus = async (statusText, colorCode, isSessionStart) => {
             if (!currentUserId) return alert("Сначала нужно войти через Google!");
+
+            const timeValue = isSessionStart ? new Date().toISOString() : null;
 
             const { error } = await supabase
                 .from('profiles')
                 .update({ 
                     status: statusText, 
-                    color: colorCode 
+                    color: colorCode,
+                    session_start: timeValue
                 })
                 .eq('id', currentUserId);
 
             if (error) {
-                alert("Ошибка обновления! Проверьте политики RLS в таблице profiles.");
+                alert("Ошибка обновления! Проверьте настройки таблицы profiles.");
                 console.error(error);
             } else {
                 fetchGroup();
             }
         };
 
-        // 4. ОТОБРАЖЕНИЕ СПИСКА УЧАСТНИКОВ
+        // Локальное тиканье таймера в шапке
+        function handleMyTimer(startTimeISO) {
+            clearInterval(timerInterval);
+            const display = document.getElementById('timerDisplay');
+            if (!startTimeISO) {
+                display.innerText = "00 сек.";
+                return;
+            }
+
+            const start = new Date(startTimeISO).getTime();
+            timerInterval = setInterval(() => {
+                const diff = new Date().getTime() - start;
+                const secs = Math.floor(diff / 1000) % 60;
+                const mins = Math.floor(diff / (1000 * 60)) % 60;
+                const hrs = Math.floor(diff / (1000 * 60 * 60));
+                
+                let text = `${secs} сек.`;
+                if (mins > 0 || hrs > 0) text = `${mins}м ${secs}с`;
+                if (hrs > 0) text = `${hrs}ч ${mins}м`;
+                
+                display.innerText = text;
+            }, 1000);
+        }
+
+        // Presence отслеживание (кто держит открытой страницу)
+        function listenPresence(user) {
+            const channel = supabase.channel('online_group', { config: { presence: { key: user.id } } });
+            channel
+                .on('presence', { event: 'sync' }, () => {
+                    onlineUsers = channel.presenceState();
+                    renderGroupList();
+                })
+                .subscribe(async (status) => {
+                    if (status === 'SUBSCRIBED') {
+                        await channel.track({ online: true });
+                    }
+                });
+        }
+
+        // 4. ПОЛУЧЕНИЕ И СОРТИРОВКА СПИСКА УЧАСТНИКОВ
         async function fetchGroup() {
             const { data, error } = await supabase
                 .from('profiles')
@@ -119,49 +193,103 @@
 
             if (error) return console.error("Ошибка загрузки группы:", error);
 
-            const list = document.getElementById('groupList');
-            list.innerHTML = data.map(user => `
-                <div class="user-item">
-                    <div class="status-dot" style="background: ${user.color || '#ccc'}"></div>
-                    <div>
-                        <strong style="color: #f06292;">${user.username || 'Аноним'}</strong><br>
-                        <small style="color: #888;">${user.status || 'Статус не задан'}</small>
-                    </div>
-                </div>
-            `).join('');
+            globalProfiles = data;
+            renderGroupList();
+        }
 
-            // Меняем текст "Загрузка..." на приветствие авторизованного юзера
+        function renderGroupList() {
+            const list = document.getElementById('groupList');
+            
+            // Сортируем: сначала те, кто физически на сайте (online), потом остальные
+            const sorted = [...globalProfiles].sort((a, b) => {
+                const aOn = onlineUsers[a.id] ? 1 : 0;
+                const bOn = onlineUsers[b.id] ? 1 : 0;
+                return bOn - aOn;
+            });
+
+            list.innerHTML = sorted.map(user => {
+                const isOnline = onlineUsers[user.id] ? 'online' : '';
+                
+                let timeMeta = '0ч 0м 0с';
+                if (user.session_start) {
+                    const diff = new Date().getTime() - new Date(user.session_start).getTime();
+                    const s = Math.floor(diff / 1000) % 60;
+                    const m = Math.floor(diff / (1000 * 60)) % 60;
+                    const h = Math.floor(diff / (1000 * 60 * 60));
+                    timeMeta = `${h}ч ${m}м ${s}с`;
+                }
+
+                return `
+                    <div class="user-item">
+                        <div class="user-info">
+                            <div class="status-dot ${isOnline}" style="background: ${user.color || '#ccc'}"></div>
+                            <div>
+                                <strong style="color: #f06292;">${user.username || 'Аноним'}</strong><br>
+                                <small style="color: #888;">${user.status || 'Статус не задан'}</small>
+                            </div>
+                        </div>
+                        <div class="user-meta">
+                            <span style="color:#3b82f6; font-size:12px; font-weight:bold;">⏱️ ${timeMeta}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
             if (currentUserId) {
-                const me = data.find(u => u.id === currentUserId);
+                const me = globalProfiles.find(u => u.id === currentUserId);
                 if (me) {
                     document.getElementById('myInfo').innerText = `Привет, ${me.username}!`;
+                    handleMyTimer(me.session_start);
                 }
             }
         }
 
-        // 5. СЛУШАТЕЛЬ АВТОРИЗАЦИИ (Определяет вошел пользователь или нет)
+        // 5. ЛОГИКА КАНАЛА ЧАТА
+        async function fetchChat() {
+            const { data } = await supabase.from('messages').select('*').order('created_at', { ascending: true }).limit(50);
+            if (data) {
+                const box = document.getElementById('chatBox');
+                box.innerHTML = data.map(m => `
+                    <div class="chat-msg"><strong style="color:#f06292;">${m.author}:</strong> ${m.text}</div>
+                `).join('');
+                box.scrollTop = box.scrollHeight;
+            }
+        }
+
+        async function sendMsg() {
+            const input = document.getElementById('chatInput');
+            if (!input.value.trim() || !currentUserId) return;
+
+            const myProfile = globalProfiles.find(u => u.id === currentUserId);
+            await supabase.from('messages').insert({
+                author: myProfile ? myProfile.username : 'Аноним',
+                text: input.value.trim()
+            });
+            input.value = '';
+        }
+
+        document.getElementById('sendMsgBtn').addEventListener('click', sendMsg);
+        document.getElementById('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMsg(); });
+
+        // 6. СЛУШАТЕЛЬ АВТОРИЗАЦИИ
         supabase.auth.onAuthStateChange(async (event, session) => {
             const authCard = document.getElementById('authCard');
             const profileCard = document.getElementById('profileCard');
 
             if (session?.user) {
-                // Если пользователь авторизован
                 currentUserId = session.user.id;
                 
                 authCard.classList.add('hidden');
                 profileCard.classList.remove('hidden');
 
-                // Извлекаем имя, которое привязано к Google-аккаунту
                 const googleName = session.user.user_metadata.full_name;
 
-                // Проверяем, есть ли уже этот пользователь в таблице profiles
                 const { data: profile } = await supabase
                     .from('profiles')
                     .select('username')
                     .eq('id', currentUserId)
                     .single();
 
-                // Если записи нет или поле имени пустое — создаем/обновляем запись
                 if (!profile || !profile.username) {
                     await supabase.from('profiles').upsert({
                         id: currentUserId,
@@ -169,9 +297,17 @@
                     });
                 }
 
+                listenPresence(session.user);
                 fetchGroup();
+                fetchChat();
+
+                // Realtime подписка вместо старого setInterval
+                supabase.channel('room_updates')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchGroup())
+                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => fetchChat())
+                    .subscribe();
+
             } else {
-                // Если пользователь вышел или еще не заходил
                 currentUserId = null;
                 authCard.classList.remove('hidden');
                 profileCard.classList.add('hidden');
@@ -179,8 +315,8 @@
             }
         });
 
-        // Каждые 5 секунд обновляем монитор группы (чтобы видеть чужие статусы)
-        setInterval(fetchGroup, 5000);
+        // Обновляем таймеры в списке раз в секунду локально
+        setInterval(() => { if (currentUserId) renderGroupList(); }, 1000);
     </script>
 </body>
-</html> 
+</html>

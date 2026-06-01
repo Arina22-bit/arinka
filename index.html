@@ -14,7 +14,11 @@
         /* Таймер сессии */
         .timer-badge { font-size: 32px; font-weight: 700; color: #3b82f6; margin: 15px 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
 
-        .buttons-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+        /* Кнопка запуска таймера */
+        .btn-start-timer { width: 100%; padding: 16px; background: #3b82f6; color: white; border: none; border-radius: 15px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 15px; transition: 0.3s; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3); }
+        .btn-start-timer:hover { background: #2563eb; transform: translateY(-2px); }
+
+        .buttons-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 5px; }
         
         .status-btn { padding: 16px; border: none; border-radius: 15px; color: white; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .status-btn:hover { opacity: 0.8; transform: translateY(-2px); }
@@ -34,7 +38,7 @@
         .user-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; background: #fff9fb; border-radius: 20px; margin-bottom: 10px; text-align: left; }
         .user-info { display: flex; align-items: center; }
         
-        /* Базовая точка статуса (цвет берется из настроек профиля) */
+        /* Базовая точка статуса */
         .status-dot { 
             width: 14px; 
             height: 14px; 
@@ -44,8 +48,7 @@
             background: #ccc;
         }
         
-        /* ЗЕЛЕНЫЙ ИНДИКАТОР ОНЛАЙНА (Вкладка открыта) */
-        /* Реализуем в виде красивого пульсирующего ободка вокруг точки, либо подменяем цвет */
+        /* Индикатор онлайна */
         .status-dot.online::after {
             content: '';
             position: absolute;
@@ -54,7 +57,7 @@
             width: 16px;
             height: 16px;
             border-radius: 50%;
-            border: 2px solid #10b981; /* Зеленый цвет Supabase Presence */
+            border: 2px solid #10b981; 
             box-shadow: 0 0 8px #10b981;
         }
         
@@ -70,7 +73,6 @@
         .btn-send { background: #f06292; color: white; border: none; border-radius: 15px; width: 45px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: 0.2s; }
         .btn-send:hover { background: #ec407a; }
 
-        /* Класс для скрытия элементов */
         .hidden { display: none !important; }
     </style>
 </head>
@@ -89,6 +91,8 @@
         <div class="timer-badge">
             ⏱️ <span id="timerDisplay">00 сек.</span>
         </div>
+
+        <button class="btn-start-timer" id="btnStartTimer">▶️ Запустить таймер</button>
 
         <div class="buttons-grid">
             <button class="status-btn btn-study" id="btnStudy">📚 Учусь</button>
@@ -122,10 +126,11 @@
 
         let currentUserId = null;
         let timerInterval = null;
+        let lastStartTimeISO = null; 
         let onlineUsers = {};
         let globalProfiles = [];
 
-        // 1. ЛОГИКА КНОПКИ ВХОДА ЧЕРЕЗ GOOGLE
+        // 1. АВТОРИЗАЦИЯ GOOGLE
         document.getElementById('loginBtn').addEventListener('click', async () => {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
@@ -136,17 +141,34 @@
             if (error) console.error("Ошибка авторизации Google:", error.message);
         });
 
-        // 2. ЛОГИКА КНОПКИ ВЫХОДА
+        // 2. ВЫХОД
         document.getElementById('logoutBtn').addEventListener('click', async () => {
             await supabase.auth.signOut();
             window.location.reload();
         });
 
-        // 3. ФУНКЦИЯ ИЗМЕНЕНИЯ СТАТУСА
+        // 3. ФУНКЦИЯ ДЛЯ ОТДЕЛЬНОГО ЗАПУСКА ТАЙМЕРА (Новое)
+        async function startTimerOnly() {
+            if (!currentUserId) return alert("Сначала нужно войти через Google!");
+
+            const { error } = await supabase
+                .from('profiles')
+                .update({ 
+                    session_start: new Date().toISOString() // Записываем только новое время старта
+                })
+                .eq('id', currentUserId);
+
+            if (error) {
+                console.error("Ошибка запуска таймера:", error);
+            } else {
+                fetchGroup();
+            }
+        }
+
+        // 4. ФУНКЦИЯ ИЗМЕНЕНИЯ СТАТУСА
         async function changeStatus(statusText, colorCode, isSessionStart) {
             if (!currentUserId) return alert("Сначала нужно войти через Google!");
 
-            // Если это кнопка "Учусь", ставим время старта, иначе сбрасываем в null (сессия завершена)
             const timeValue = isSessionStart ? new Date().toISOString() : null;
 
             const { error } = await supabase
@@ -159,23 +181,30 @@
                 .eq('id', currentUserId);
 
             if (error) {
-                alert("Ошибка обновления! Убедитесь, что запустили второй SQL скрипт для прав RLS.");
+                alert("Ошибка обновления!");
                 console.error(error);
             } else {
                 fetchGroup();
             }
         }
 
-        // Слушатели событий клика на кнопки статусов
-        document.getElementById('btnStudy').addEventListener('click', () => changeStatus('Учусь 📚', '#28a745', true));
-        document.getElementById('btnCoffee').addEventListener('click', () => changeStatus('Кофе ☕', '#ffc107', false));
-        document.getElementById('btnGame').addEventListener('click', () => changeStatus('В игре 🎮', '#17a2b8', false));
-        document.getElementById('btnHome').addEventListener('click', () => changeStatus('Дома 🏠', '#6c757d', false));
+        // Назначаем действие на кнопку таймера
+        document.getElementById('btnStartTimer').addEventListener('click', startTimerOnly);
 
-        // Локальный таймер текущего юзера (верхняя панель)
+        // Кнопки статуса теперь просто меняют статус (и включают таймер с нуля для этого статуса)
+        document.getElementById('btnStudy').addEventListener('click', () => changeStatus('Учусь 📚', '#28a745', true));
+        document.getElementById('btnCoffee').addEventListener('click', () => changeStatus('Кофе ☕', '#ffc107', true));
+        document.getElementById('btnGame').addEventListener('click', () => changeStatus('В игре 🎮', '#17a2b8', true));
+        document.getElementById('btnHome').addEventListener('click', () => changeStatus('Дома 🏠', '#6c757d', true));
+
+        // Локальный таймер
         function handleMyTimer(startTimeISO) {
+            if (startTimeISO === lastStartTimeISO) return;
+            lastStartTimeISO = startTimeISO;
+
             clearInterval(timerInterval);
             const display = document.getElementById('timerDisplay');
+            
             if (!startTimeISO) {
                 display.innerText = "00 сек.";
                 return;
@@ -184,6 +213,8 @@
             const start = new Date(startTimeISO).getTime();
             timerInterval = setInterval(() => {
                 const diff = new Date().getTime() - start;
+                if (diff < 0) return;
+
                 const secs = Math.floor(diff / 1000) % 60;
                 const mins = Math.floor(diff / (1000 * 60)) % 60;
                 const hrs = Math.floor(diff / (1000 * 60 * 60));
@@ -196,7 +227,7 @@
             }, 1000);
         }
 
-        // Presence отслеживание (онлайн вкладки)
+        // Presence
         function listenPresence(user) {
             const channel = supabase.channel('online_group', { config: { presence: { key: user.id } } });
             channel
@@ -211,14 +242,14 @@
                 });
         }
 
-        // 4. ОТОБРАЖЕНИЕ ГРУППЫ С СОРТИРОВКОЙ ПО ОНЛАЙНУ
+        // Отображение группы
         async function fetchGroup() {
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*')
                 .order('username', { ascending: true });
 
-            if (error) return console.error("Ошибка загрузки группы:", error);
+            if (error) return console.error(error);
 
             globalProfiles = data;
             renderGroupList();
@@ -235,10 +266,8 @@
             });
 
             list.innerHTML = sorted.map(user => {
-                // Если id пользователя есть в объекте присутствия Supabase — он ONLINE
                 const isOnline = onlineUsers[user.id] ? 'online' : '';
                 
-                // Расчет счетчика времени в учебе
                 let timeMeta = '0ч 0м 0с';
                 if (user.session_start) {
                     const diff = new Date().getTime() - new Date(user.session_start).getTime();
@@ -250,7 +279,6 @@
                     }
                 }
 
-                // Используем user.color для цвета кружка, но класс .online наложит зеленый ободок вокруг него
                 return `
                     <div class="user-item">
                         <div class="user-info">
@@ -267,18 +295,16 @@
                 `;
             }).join('');
 
-            // Обновляем информацию о себе любимом
             if (currentUserId) {
                 const me = globalProfiles.find(u => u.id === currentUserId);
                 if (me) {
                     document.getElementById('myInfo').innerText = `Привет, ${me.username}!`;
-                    // Проверяем, изменился ли статус сессии, чтобы не перезапускать интервал без нужды
                     handleMyTimer(me.session_start);
                 }
             }
         }
 
-        // 5. ЛОГИКА ОБЩЕГО ЧАТА
+        // ЧАТ
         async function fetchChat() {
             const { data } = await supabase.from('messages').select('*').order('created_at', { ascending: true }).limit(50);
             if (data) {
@@ -305,14 +331,13 @@
         document.getElementById('sendMsgBtn').addEventListener('click', sendMsg);
         document.getElementById('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMsg(); });
 
-        // 6. СЛУШАТЕЛЬ СОСТОЯНИЯ АВТОРИЗАЦИИ
+        // ПОДПИСКИ СЛУШАТЕЛЕЙ SUPABASE
         supabase.auth.onAuthStateChange(async (event, session) => {
             const authCard = document.getElementById('authCard');
             const profileCard = document.getElementById('profileCard');
 
             if (session?.user) {
                 currentUserId = session.user.id;
-                
                 authCard.classList.add('hidden');
                 profileCard.classList.remove('hidden');
 
@@ -335,7 +360,6 @@
                 fetchGroup();
                 fetchChat();
 
-                // Realtime подписка на изменения данных
                 supabase.channel('room_updates')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchGroup())
                     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => fetchChat())
@@ -349,7 +373,6 @@
             }
         });
 
-        // Каждую секунду перерисовываем только время (Presence и профили дергать не нужно)
         setInterval(() => { 
             if (currentUserId && globalProfiles.length > 0) { 
                 renderGroupList(); 

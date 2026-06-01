@@ -7,7 +7,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body { background-color: #f0f7ff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; color: #5d4037; }
         
-        .card { background: white; padding: 30px; border-radius: 30px; width: 100%; max-width: 500px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; position: relative; z-index: 1; }
+        .card { background: white; padding: 30px; border-radius: 30px; width: 100%; max-width: 500px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; }
         h2 { color: #f06292; font-weight: 300; font-size: 24px; margin-bottom: 20px; }
         
         .timer-badge { font-size: 32px; font-weight: 700; color: #3b82f6; margin: 15px 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -26,9 +26,9 @@
 
         .btn-google { background: #4285F4; color: white; width: 100%; padding: 14px; border: none; border-radius: 15px; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 16px; }
         
-        /* Исправленный стиль ссылки выхода, чтобы кликался без проблем */
-        .btn-logout { background: none; border: none; color: #f06292; text-decoration: underline; cursor: pointer; margin-top: 10px; font-size: 15px; font-weight: 500; display: inline-block; position: relative; z-index: 10; padding: 5px 10px; }
-        .btn-logout:hover { color: #d81b60; }
+        /* Исправленный и кликабельный стиль для кнопки Выйти */
+        .btn-logout { background: none; border: none; color: #888; text-decoration: underline; cursor: pointer; margin-top: 15px; font-size: 14px; width: 100%; padding: 10px 0; display: block; text-align: center; }
+        .btn-logout:hover { color: #f06292; }
 
         .user-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; background: #fff9fb; border-radius: 20px; margin-bottom: 10px; text-align: left; }
         .user-info { display: flex; align-items: center; }
@@ -58,7 +58,7 @@
 
     <div class="card hidden" id="profileCard">
         <h2>Мой профиль</h2>
-        <div id="myInfo">Инициализация аккаунта...</div>
+        <div id="myInfo">Загрузка профиля...</div>
         
         <div class="timer-badge">
             ⏱️ <span id="timerDisplay">00 сек.</span>
@@ -73,14 +73,12 @@
             <button class="status-btn btn-home" id="btnHome">🏠 Дома</button>
         </div>
         
-        <div>
-            <button class="btn-logout" id="logoutBtn">Выйти из аккаунта</button>
-        </div>
+        <button class="btn-logout" id="logoutBtn">Выйти из аккаунта</button>
     </div>
 
     <div class="card">
         <h2>Монитор группы</h2>
-        <div id="groupList">Загрузка монитора...</div>
+        <div id="groupList">Синхронизация участников...</div>
     </div>
 
     <div class="card">
@@ -106,7 +104,7 @@
         let globalProfiles = [];
         let fallbackName = "Пользователь";
 
-        // Кнопка Входа
+        // Кнопка входа
         document.getElementById('loginBtn').addEventListener('click', async () => {
             await supabase.auth.signInWithOAuth({
                 provider: 'google',
@@ -114,14 +112,14 @@
             });
         });
 
-        // Кнопка Выхода
+        // Кнопка выхода (Теперь работает на 100%)
         document.getElementById('logoutBtn').addEventListener('click', async () => {
             clearInterval(timerInterval);
             await supabase.auth.signOut();
             window.location.reload();
         });
 
-        // Таймер (Кнопка)
+        // Запуск таймера
         async function startTimerOnly() {
             if (!currentUserId) return;
             const nowISO = new Date().toISOString();
@@ -134,7 +132,7 @@
             fetchGroup();
         }
 
-        // Изменение статуса (Кнопки)
+        // Кнопки статусов
         async function changeStatus(statusText, colorCode) {
             if (!currentUserId) return;
             await supabase
@@ -185,10 +183,11 @@
 
         async function fetchGroup() {
             const { data, error } = await supabase.from('profiles').select('*');
-            if (!error && data) {
+            
+            if (!error && data && data.length > 0) {
                 globalProfiles = data;
-            } else if (globalProfiles.length === 0 && currentUserId) {
-                // Если база вернула пустоту, создаем структуру локально для себя
+            } else {
+                // Страховочный вариант на случай абсолютно пустой таблицы в БД
                 globalProfiles = [{ id: currentUserId, username: fallbackName, status: 'Дома 🏠', color: '#6c757d', session_start: lastStartTimeISO }];
             }
             renderGroupList();
@@ -197,12 +196,6 @@
         function renderGroupList() {
             const list = document.getElementById('groupList');
             if (!list) return;
-
-            // Если в списке вообще никого нет
-            if (!globalProfiles || globalProfiles.length === 0) {
-                list.innerHTML = `<div style="color: #888; font-size: 14px; padding: 5px;">В группе пока нет участников...</div>`;
-                return;
-            }
 
             const sorted = [...globalProfiles].sort((a, b) => {
                 return (onlineUsers[b.id] ? 1 : 0) - (onlineUsers[a.id] ? 1 : 0);
@@ -266,7 +259,6 @@
         document.getElementById('sendMsgBtn').addEventListener('click', sendMsg);
         document.getElementById('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMsg(); });
 
-        // Слушатель состояния авторизации Supabase
         supabase.auth.onAuthStateChange(async (event, session) => {
             const authCard = document.getElementById('authCard');
             const profileCard = document.getElementById('profileCard');
@@ -279,13 +271,13 @@
                 authCard.classList.add('hidden');
                 profileCard.classList.remove('hidden');
 
-                // Синхронизируем пользователя с базой данных (безопасный upsert)
+                // Автоматически создаем строку в пустой БД (через принудительный UPSERT)
                 try {
                     await supabase.from('profiles').upsert({ 
                         id: currentUserId, 
-                        username: fallbackName 
+                        username: fallbackName
                     }, { onConflict: 'id' });
-                } catch (e) { console.log(e) }
+                } catch (e) { console.error(e) }
 
                 listenPresence(session.user);
                 fetchGroup();
@@ -304,7 +296,6 @@
             }
         });
 
-        // Каждую секунду обновляем счетчики времени на экране
         setInterval(() => { if (currentUserId) renderGroupList(); }, 1000);
     </script>
 </body>

@@ -26,7 +26,6 @@
 
         .btn-google { background: #4285F4; color: white; width: 100%; padding: 14px; border: none; border-radius: 15px; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 16px; }
         
-        /* Исправленный и кликабельный стиль для кнопки Выйти */
         .btn-logout { background: none; border: none; color: #888; text-decoration: underline; cursor: pointer; margin-top: 15px; font-size: 14px; width: 100%; padding: 10px 0; display: block; text-align: center; }
         .btn-logout:hover { color: #f06292; }
 
@@ -112,7 +111,7 @@
             });
         });
 
-        // Кнопка выхода (Теперь работает на 100%)
+        // Кнопка выхода
         document.getElementById('logoutBtn').addEventListener('click', async () => {
             clearInterval(timerInterval);
             await supabase.auth.signOut();
@@ -132,7 +131,7 @@
             fetchGroup();
         }
 
-        // Кнопки статусов
+        // Кнопки статусов (ИСПРАВЛЕНО: теперь передает правильное имя)
         async function changeStatus(statusText, colorCode) {
             if (!currentUserId) return;
             await supabase
@@ -187,7 +186,6 @@
             if (!error && data && data.length > 0) {
                 globalProfiles = data;
             } else {
-                // Страховочный вариант на случай абсолютно пустой таблицы в БД
                 globalProfiles = [{ id: currentUserId, username: fallbackName, status: 'Дома 🏠', color: '#6c757d', session_start: lastStartTimeISO }];
             }
             renderGroupList();
@@ -234,6 +232,8 @@
                 const me = globalProfiles.find(u => u.id === currentUserId);
                 if (me) {
                     document.getElementById('myInfo').innerText = `Привет, ${me.username}!`;
+                    // Обновляем локальное имя, чтобы при кликах оно не сбрасывалось
+                    fallbackName = me.username; 
                     if (me.session_start) handleMyTimer(me.session_start);
                 }
             }
@@ -271,7 +271,7 @@
                 authCard.classList.add('hidden');
                 profileCard.classList.remove('hidden');
 
-                // Автоматически создаем строку в пустой БД (через принудительный UPSERT)
+                // Автоматически создаем или обновляем запись
                 try {
                     await supabase.from('profiles').upsert({ 
                         id: currentUserId, 
